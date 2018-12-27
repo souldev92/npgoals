@@ -237,5 +237,5 @@ class PlayerQuest{
     int goal3;
     int col1;
     int col2;
-    int col3;ś
+    int col3;
 }
