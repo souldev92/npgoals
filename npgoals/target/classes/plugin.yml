@@ -1,0 +1,5 @@
+name: Npgoals
+version: 1.0-SNAPSHOT
+main: me.souldev.npgoals.Npgoals
+authors: [Souldev]
+description: Plugin for quests and goals
