@@ -1,0 +1,3 @@
+name: Npgoals
+version: ${project.version}
+main: me.souldev.npgoals.Npgoals
