@@ -85,4 +85,3 @@ public final class Npgoals extends JavaPlugin implements Listener {
 
 
 
-

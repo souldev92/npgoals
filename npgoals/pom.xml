@@ -11,7 +11,6 @@
 
     <name>Npgoals</name>
 
-    <description>Plugin for quests and goals</description>
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>

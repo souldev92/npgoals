@@ -1,10 +1,9 @@
 package me.souldev.npgoals;
 
+import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
-import org.bukkit.entity.Player;
-import org.bukkit.plugin.Plugin;
 import org.bukkit.scheduler.BukkitRunnable;
 
 import java.sql.PreparedStatement;
@@ -33,7 +32,7 @@ public class MySqlCon implements Listener {
                 giveQuests(player.getUniqueId(), player);
             }
         });
-
+// tactical comment for testing
     }
 
     private void giveQuests(UUID uuid, Player player) {
