@@ -1,0 +1,11 @@
+<component name="libraryTable">
+  <library name="target">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/npgoals/target/npgoals-1.0-SNAPSHOT-shaded.jar!/" />
+      <root url="jar://$PROJECT_DIR$/npgoals/target/original-npgoals-1.0-SNAPSHOT.jar!/" />
+      <root url="jar://$PROJECT_DIR$/npgoals/target/npgoals-1.0-SNAPSHOT.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>
