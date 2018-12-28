@@ -16,6 +16,7 @@ public final class Npgoals extends JavaPlugin implements Listener {
     private String host,database,username,password;
     private int port;
 //another comment for testing
+    //test me daddy
     @Override
     public void onEnable() {
         // Plugin startup logic
