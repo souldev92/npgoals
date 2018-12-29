@@ -1,13 +1,19 @@
 package me.souldev.npgoals;
 
 import org.bukkit.ChatColor;
+import org.bukkit.Material;
 import org.bukkit.block.Block;
+import org.bukkit.block.BrewingStand;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
+import org.bukkit.event.inventory.BrewEvent;
+import org.bukkit.event.inventory.FurnaceExtractEvent;
+import org.bukkit.event.player.PlayerFishEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.potion.PotionBrewer;
 import org.bukkit.scheduler.BukkitRunnable;
 
 import java.sql.PreparedStatement;
@@ -34,6 +40,51 @@ public class MySqlCon implements Listener {
                 fetchQuests(player);
             }
         });
+    }
+
+    @EventHandler
+    private void onFurnaceTake(FurnaceExtractEvent event)
+    {
+        Player player = event.getPlayer();
+
+        Material item = event.getItemType();
+        int itemcount = event.getItemAmount();
+        plugin.getLogger().info(item.toString());
+        for (PlayerQuest pquest:playerQuests)
+        {
+            if (pquest.uuid.equals(player.getUniqueId()) && pquest.questtype.equals("smeltitem") && pquest.questtarget.equalsIgnoreCase(item.toString()) &&
+                    !pquest.isCompleted)
+            {
+                pquest.collected = pquest.collected + itemcount;
+                if (pquest.collected >= pquest.tocollect)
+                {
+                    pquest.isCompleted = true;
+                    player.sendRawMessage(ChatColor.BLUE + "Congrats you finished quest");
+                    try {
+                        PreparedStatement statement = plugin.getConnection().prepareStatement("UPDATE goals SET collected = ?, iscompleted = 1 where uuid = ? and goal = ? and " +
+                                "target = ?");
+                        statement.setInt(1,pquest.collected);
+                        statement.setString(2,player.getUniqueId().toString());
+                        statement.setString(3,pquest.questtype);
+                        statement.setString(4,pquest.questtarget);
+                        statement.executeUpdate();
+                        PreparedStatement statement1 = plugin.getConnection().prepareStatement("UPDATE players SET dailycompleted = dailycompleted + 1 where uuid = ?");
+                        statement1.setString(1,player.getUniqueId().toString());
+                        statement1.executeUpdate();
+                    }catch (SQLException e)
+                    {
+                        e.printStackTrace();
+                    }
+
+
+                }
+
+            }
+        }
+
+
+
+
     }
     @EventHandler
     private  void onLeave(PlayerQuitEvent event)
@@ -137,7 +188,14 @@ public class MySqlCon implements Listener {
             e.printStackTrace();
         }
     }
+    @EventHandler
+    private void onFish(PlayerFishEvent fishEvent)
+    {
+        if(fishEvent.getCaught() != null)
+            plugin.getLogger().info(fishEvent.getCaught().getName());
 
+
+    }
 
     private boolean playerExists(UUID uuid) {
 
