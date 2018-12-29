@@ -2,4 +2,5 @@ me\souldev\npgoals\Npgoals.class
 me\souldev\npgoals\MySqlCon.class
 me\souldev\npgoals\MySqlCon$1.class
 me\souldev\npgoals\Quest.class
+me\souldev\npgoals\PlayerQuest.class
 me\souldev\npgoals\MySqlCon$2.class

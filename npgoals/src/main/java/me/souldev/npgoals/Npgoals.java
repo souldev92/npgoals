@@ -15,16 +15,16 @@ public final class Npgoals extends JavaPlugin implements Listener {
     private Connection connection;
     private String host,database,username,password;
     private int port;
-//another comment for testing
-    //test me daddy no u
+    MySqlCon sqlCon;
     @Override
     public void onEnable() {
         // Plugin startup logic
         getLogger().info("NPGoals starting");
         loadConfig();
         mySqlSetup();
-        this.getServer().getPluginManager().registerEvents(new MySqlCon(),this);
-        new MySqlCon().checkQuestDb();
+        sqlCon = new MySqlCon();
+        this.getServer().getPluginManager().registerEvents(sqlCon,this);
+        sqlCon.checkQuestDb();
 
 
 
@@ -71,7 +71,22 @@ public final class Npgoals extends JavaPlugin implements Listener {
     @Override
     public void onDisable() {
         // Plugin shutdown logic
+        for(PlayerQuest pquest: sqlCon.playerQuests)
+        try{
+            PreparedStatement statement = getConnection().prepareStatement("UPDATE goals SET collected = ? where uuid = ? and goal = ? and " +
+                    "target = ?");
+            statement.setInt(1,pquest.collected);
+            statement.setString(2,pquest.uuid.toString());
+            statement.setString(3,pquest.questtype);
+            statement.setString(4,pquest.questtarget);
+            statement.executeUpdate();
+
+        }catch (SQLException e)
+        {
+            e.printStackTrace();
+        }
         getLogger().info("NPGoals stopping");
+
     }
 
 

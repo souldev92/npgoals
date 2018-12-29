@@ -1,18 +1,19 @@
 package me.souldev.npgoals;
 
+import org.bukkit.ChatColor;
+import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.scheduler.BukkitRunnable;
 
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Random;
-import java.util.UUID;
+import java.util.*;
 
 public class MySqlCon implements Listener {
     private Npgoals plugin = Npgoals.getPlugin(Npgoals.class);
@@ -21,7 +22,7 @@ public class MySqlCon implements Listener {
     private String[] smelts = {"iron_ingot", "gold_ingot", "cooked_chicken", "cooked_beef",
             "cooked_porkchop", "cooked_mutton", "cooked_rabbit", "cooked_potato"};
     private String[] potions = {"8197", "8193", "8196", "8200", "8194", "8201"};
-
+    public ArrayList<PlayerQuest> playerQuests = new ArrayList<>();
     @EventHandler
     private void onJoin(PlayerJoinEvent event) {
         plugin.getServer().getScheduler().runTaskAsynchronously(plugin, new Runnable() {
@@ -30,9 +31,94 @@ public class MySqlCon implements Listener {
                 Player player = event.getPlayer();
                 createPlayer(player.getUniqueId(), player);
                 giveQuests(player.getUniqueId(), player);
+                fetchQuests(player);
             }
         });
-// tactical comment for testing
+    }
+    @EventHandler
+    private  void onLeave(PlayerQuitEvent event)
+    {
+        UUID uuid = event.getPlayer().getUniqueId();
+        Iterator itr = playerQuests.iterator();
+
+        while (itr.hasNext())
+        {
+            PlayerQuest pquest = (PlayerQuest)itr.next();
+            if (pquest.uuid.equals(uuid))
+            {
+                try{
+                    PreparedStatement statement = plugin.getConnection().prepareStatement("UPDATE goals SET collected = ? where uuid = ? and goal = ? and " +
+                            "target = ?");
+                    statement.setInt(1,pquest.collected);
+                    statement.setString(2,uuid.toString());
+                    statement.setString(3,pquest.questtype);
+                    statement.setString(4,pquest.questtarget);
+                    statement.executeUpdate();
+
+                }catch (SQLException e)
+                {
+                    e.printStackTrace();
+                }
+                itr.remove();
+            }
+        }
+    }
+
+    private void fetchQuests(Player player)
+    {
+        try {
+            PreparedStatement statement = plugin.getConnection().prepareStatement("SELECT uuid,goal,target,collected,amount,iscompleted " +
+                "FROM goals WHERE UUID=?");
+            statement.setString(1,player.getUniqueId().toString());
+            ResultSet results = statement.executeQuery();
+            while(results.next())
+            {
+                playerQuests.add(new PlayerQuest(UUID.fromString(results.getString(1)),results.getString(2),results.getString(3),results.getInt(4),
+                        results.getInt(5),results.getBoolean(6)));
+            }
+
+        }catch (SQLException e)
+        {
+            e.printStackTrace();
+        }
+    }
+    @EventHandler
+    private void onBreakBlock(BlockBreakEvent event)
+    {
+        Player player = event.getPlayer();
+        Block block = event.getBlock();
+        
+        for (PlayerQuest pquest:playerQuests)
+        {
+            if (pquest.uuid.equals(player.getUniqueId()) && pquest.questtype.equals("breakblock") && pquest.questtarget.equalsIgnoreCase(block.getType().toString()) &&
+            !pquest.isCompleted)
+            {
+                pquest.collected++;
+                if (pquest.collected >= pquest.tocollect)
+                {
+                    pquest.isCompleted = true;
+                    player.sendRawMessage(ChatColor.BLUE + "Congrats you finished quest");
+                    try {
+                        PreparedStatement statement = plugin.getConnection().prepareStatement("UPDATE goals SET collected = ?, iscompleted = 1 where uuid = ? and goal = ? and " +
+                                "target = ?");
+                        statement.setInt(1,pquest.collected);
+                        statement.setString(2,player.getUniqueId().toString());
+                        statement.setString(3,pquest.questtype);
+                        statement.setString(4,pquest.questtarget);
+                        statement.executeUpdate();
+                        PreparedStatement statement1 = plugin.getConnection().prepareStatement("UPDATE players SET dailycompleted = dailycompleted + 1 where uuid = ?");
+                        statement1.setString(1,player.getUniqueId().toString());
+                        statement1.executeUpdate();
+                    }catch (SQLException e)
+                    {
+                        e.printStackTrace();
+                    }
+
+
+                }
+
+            }
+        }
     }
 
     private void giveQuests(UUID uuid, Player player) {
@@ -196,6 +282,7 @@ public class MySqlCon implements Listener {
                         for (Player online:plugin.getServer().getOnlinePlayers())
                         {
                             giveQuests(online.getUniqueId(),online);
+                            fetchQuests(online);
                         }
                         return;
                     }
@@ -216,7 +303,7 @@ class Quest{
     String questType;
     String target;
     int amount;
-    Quest(String questType, String target, int amount)
+    public Quest(String questType, String target, int amount)
     {
         this.amount = amount;
         this.questType=questType;
@@ -225,16 +312,18 @@ class Quest{
 }
 class PlayerQuest{
     UUID uuid;
-    String quest1;
-    String quest2;
-    String quest3;
-    String target1;
-    String target2;
-    String target3;
-    int goal1;
-    int goal2;
-    int goal3;
-    int col1;
-    int col2;
-    int col3;
+    String questtype;
+    String questtarget;
+    int collected;
+    int tocollect;
+    boolean isCompleted;
+    public PlayerQuest(UUID uuid, String questtype, String questtarget, int collected, int tocollect,boolean isCompleted)
+    {
+        this.collected=collected;
+        this.questtarget=questtarget;
+        this.questtype=questtype;
+        this.tocollect=tocollect;
+        this.uuid=uuid;
+        this.isCompleted = isCompleted;
+    }
 }
