@@ -131,9 +131,13 @@ public class MySqlCon implements Listener {
             e.printStackTrace();
         }
     }
+
     @EventHandler
     private void onKillMob(EntityDeathEvent event)
     {
+
+        if (event.getEntity().getKiller() == null)
+            return;
 
         String entityName = event.getEntity().toString();
         Player player = event.getEntity().getKiller();
