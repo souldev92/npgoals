@@ -3,17 +3,16 @@ package me.souldev.npgoals;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
-import org.bukkit.block.BrewingStand;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
-import org.bukkit.event.inventory.BrewEvent;
+import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.inventory.FurnaceExtractEvent;
 import org.bukkit.event.player.PlayerFishEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
-import org.bukkit.potion.PotionBrewer;
+import org.bukkit.material.Wood;
 import org.bukkit.scheduler.BukkitRunnable;
 
 import java.sql.PreparedStatement;
@@ -23,11 +22,13 @@ import java.util.*;
 
 public class MySqlCon implements Listener {
     private Npgoals plugin = Npgoals.getPlugin(Npgoals.class);
-    private String[] monsters = {"zombie", "skeleton", "spider", "enderman", "creeper", "ghast", "wither_skeleton"};
-    private String[] blocks = {"stone", "dirt", "log:0", "log:1", "log:2", "log:3", "log2:0", "log2:1", "netherrack"};
+    private String[] monsters = {"craftzombie", "craftskeleton", "craftspider", "craftenderman",
+            "craftcreeper", "craftghast", "craftwitherskeleton"};
+    private String[] blocks = {"stone(0)", "dirt(0)", "generic", "birch", "redwood", "jungle",
+            "acacia", "dark_oak", "netherrack(0)","sand(0)","gravel(0)"};
     private String[] smelts = {"iron_ingot", "gold_ingot", "cooked_chicken", "cooked_beef",
             "cooked_porkchop", "cooked_mutton", "cooked_rabbit", "cooked_potato"};
-    private String[] potions = {"8197", "8193", "8196", "8200", "8194", "8201"};
+   // private String[] potions = {"8197", "8193", "8196", "8200", "8194", "8201"};
     public ArrayList<PlayerQuest> playerQuests = new ArrayList<>();
     @EventHandler
     private void onJoin(PlayerJoinEvent event) {
@@ -82,9 +83,6 @@ public class MySqlCon implements Listener {
             }
         }
 
-
-
-
     }
     @EventHandler
     private  void onLeave(PlayerQuitEvent event)
@@ -134,14 +132,67 @@ public class MySqlCon implements Listener {
         }
     }
     @EventHandler
+    private void onKillMob(EntityDeathEvent event)
+    {
+
+        String entityName = event.getEntity().toString();
+        Player player = event.getEntity().getKiller();
+        plugin.getLogger().info(player.getName());
+        for (PlayerQuest pquest:playerQuests)
+        {
+            if (pquest.uuid.equals(player.getUniqueId()) && pquest.questtype.equals("killmob") && pquest.questtarget.equalsIgnoreCase(entityName) &&
+                    !pquest.isCompleted)
+            {
+                pquest.collected = pquest.collected + 1;
+                if (pquest.collected >= pquest.tocollect)
+                {
+                    pquest.isCompleted = true;
+                    player.sendRawMessage(ChatColor.BLUE + "Congrats you finished quest");
+                    try {
+                        PreparedStatement statement = plugin.getConnection().prepareStatement("UPDATE goals SET collected = ?, iscompleted = 1 where uuid = ? and goal = ? and " +
+                                "target = ?");
+                        statement.setInt(1,pquest.collected);
+                        statement.setString(2,player.getUniqueId().toString());
+                        statement.setString(3,pquest.questtype);
+                        statement.setString(4,pquest.questtarget);
+                        statement.executeUpdate();
+                        PreparedStatement statement1 = plugin.getConnection().prepareStatement("UPDATE players SET dailycompleted = dailycompleted + 1 where uuid = ?");
+                        statement1.setString(1,player.getUniqueId().toString());
+                        statement1.executeUpdate();
+                    }catch (SQLException e)
+                    {
+                        e.printStackTrace();
+                    }
+
+
+                }
+
+            }
+        }
+
+    }
+    @EventHandler
     private void onBreakBlock(BlockBreakEvent event)
     {
         Player player = event.getPlayer();
         Block block = event.getBlock();
-        
+
+
+
+        plugin.getLogger().info(block.getState().getData().toString());
+        String blockName;
+        if (block.getType().toString().equalsIgnoreCase("LOG") || block.getType().toString().equalsIgnoreCase("LOG_2"))
+        {
+            Wood woodblock = (Wood)block.getState().getData();
+            plugin.getLogger().info(woodblock.getSpecies().name());
+            blockName = woodblock.getSpecies().name();
+
+        }
+        else
+            blockName=block.getState().getData().toString();
         for (PlayerQuest pquest:playerQuests)
         {
-            if (pquest.uuid.equals(player.getUniqueId()) && pquest.questtype.equals("breakblock") && pquest.questtarget.equalsIgnoreCase(block.getType().toString()) &&
+            if (pquest.uuid.equals(player.getUniqueId()) && pquest.questtype.equals("breakblock") && pquest.questtarget.equalsIgnoreCase(blockName) &&
             !pquest.isCompleted)
             {
                 pquest.collected++;
@@ -244,7 +295,7 @@ public class MySqlCon implements Listener {
         goalArray.add("killmob");
         goalArray.add("breakblock");
         goalArray.add("smeltitem");
-        goalArray.add("brewpotion");
+
         Collections.shuffle(goalArray);
         Random random = new Random();
         for (int i = 0; i < 3; i++) {
@@ -254,15 +305,15 @@ public class MySqlCon implements Listener {
                     String mob = monsters[random.nextInt(monsters.length)];
                     int mobAmount;
                     switch (mob) {
-                        case "zombie":
-                        case "skeleton":
-                        case "spider":
-                        case "creeper":
+                        case "craftzombie":
+                        case "craftskeleton":
+                        case "craftspider":
+                        case "craftcreeper":
                             mobAmount = random.nextInt(10) + 10;
                             break;
-                        case "enderman":
-                        case "ghast":
-                        case "wither_skeleton":
+                        case "craftenderman":
+                        case "craftghast":
+                        case "craftwitherskeleton":
                             mobAmount = random.nextInt(5) + 5;
                             break;
                         default:
@@ -292,11 +343,7 @@ public class MySqlCon implements Listener {
                     }
                     questList.add(new Quest(goalArray.get(i), itemToSmelt, smeltAmount));
                     break;
-                case "brewpotion":
-                    String potion = potions[random.nextInt(potions.length)];
-                    int potionAmount = 3;
-                    questList.add(new Quest(goalArray.get(i), potion, potionAmount));
-                    break;
+
                 default:
                     questList.add(new Quest("breakblock", "stone", 64));
 
