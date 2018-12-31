@@ -1,5 +1,4 @@
 package me.souldev.npgoals;
-
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
@@ -14,12 +13,10 @@ import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.material.Wood;
 import org.bukkit.scheduler.BukkitRunnable;
-
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.*;
-
 public class MySqlCon implements Listener {
     private Npgoals plugin = Npgoals.getPlugin(Npgoals.class);
     private String[] monsters = {"craftzombie", "craftskeleton", "craftspider", "craftenderman",
@@ -42,7 +39,6 @@ public class MySqlCon implements Listener {
             }
         });
     }
-
     @EventHandler
     private void onFurnaceTake(FurnaceExtractEvent event)
     {
@@ -51,45 +47,13 @@ public class MySqlCon implements Listener {
         Material item = event.getItemType();
         int itemcount = event.getItemAmount();
         plugin.getLogger().info(item.toString());
-        for (PlayerQuest pquest:playerQuests)
-        {
-            if (pquest.uuid.equals(player.getUniqueId()) && pquest.questtype.equals("smeltitem") && pquest.questtarget.equalsIgnoreCase(item.toString()) &&
-                    !pquest.isCompleted)
-            {
-                pquest.collected = pquest.collected + itemcount;
-                if (pquest.collected >= pquest.tocollect)
-                {
-                    pquest.isCompleted = true;
-                    player.sendRawMessage(ChatColor.BLUE + "Congrats you finished quest");
-                    try {
-                        PreparedStatement statement = plugin.getConnection().prepareStatement("UPDATE goals SET collected = ?, iscompleted = 1 where uuid = ? and goal = ? and " +
-                                "target = ?");
-                        statement.setInt(1,pquest.collected);
-                        statement.setString(2,player.getUniqueId().toString());
-                        statement.setString(3,pquest.questtype);
-                        statement.setString(4,pquest.questtarget);
-                        statement.executeUpdate();
-                        PreparedStatement statement1 = plugin.getConnection().prepareStatement("UPDATE players SET dailycompleted = dailycompleted + 1 where uuid = ?");
-                        statement1.setString(1,player.getUniqueId().toString());
-                        statement1.executeUpdate();
-                    }catch (SQLException e)
-                    {
-                        e.printStackTrace();
-                    }
-
-
-                }
-
-            }
-        }
-
+        updateDBOnQuest(player,"smeltitem",item.toString(),itemcount);
     }
     @EventHandler
     private  void onLeave(PlayerQuitEvent event)
     {
         UUID uuid = event.getPlayer().getUniqueId();
         Iterator itr = playerQuests.iterator();
-
         while (itr.hasNext())
         {
             PlayerQuest pquest = (PlayerQuest)itr.next();
@@ -112,7 +76,6 @@ public class MySqlCon implements Listener {
             }
         }
     }
-
     private void fetchQuests(Player player)
     {
         try {
@@ -125,64 +88,26 @@ public class MySqlCon implements Listener {
                 playerQuests.add(new PlayerQuest(UUID.fromString(results.getString(1)),results.getString(2),results.getString(3),results.getInt(4),
                         results.getInt(5),results.getBoolean(6)));
             }
-
         }catch (SQLException e)
         {
             e.printStackTrace();
         }
     }
-
     @EventHandler
     private void onKillMob(EntityDeathEvent event)
     {
-
         if (event.getEntity().getKiller() == null)
             return;
-
         String entityName = event.getEntity().toString();
         Player player = event.getEntity().getKiller();
         plugin.getLogger().info(player.getName());
-        for (PlayerQuest pquest:playerQuests)
-        {
-            if (pquest.uuid.equals(player.getUniqueId()) && pquest.questtype.equals("killmob") && pquest.questtarget.equalsIgnoreCase(entityName) &&
-                    !pquest.isCompleted)
-            {
-                pquest.collected = pquest.collected + 1;
-                if (pquest.collected >= pquest.tocollect)
-                {
-                    pquest.isCompleted = true;
-                    player.sendRawMessage(ChatColor.BLUE + "Congrats you finished quest");
-                    try {
-                        PreparedStatement statement = plugin.getConnection().prepareStatement("UPDATE goals SET collected = ?, iscompleted = 1 where uuid = ? and goal = ? and " +
-                                "target = ?");
-                        statement.setInt(1,pquest.collected);
-                        statement.setString(2,player.getUniqueId().toString());
-                        statement.setString(3,pquest.questtype);
-                        statement.setString(4,pquest.questtarget);
-                        statement.executeUpdate();
-                        PreparedStatement statement1 = plugin.getConnection().prepareStatement("UPDATE players SET dailycompleted = dailycompleted + 1 where uuid = ?");
-                        statement1.setString(1,player.getUniqueId().toString());
-                        statement1.executeUpdate();
-                    }catch (SQLException e)
-                    {
-                        e.printStackTrace();
-                    }
-
-
-                }
-
-            }
-        }
-
+        updateDBOnQuest(player,"killmob",entityName,1);
     }
     @EventHandler
     private void onBreakBlock(BlockBreakEvent event)
     {
         Player player = event.getPlayer();
         Block block = event.getBlock();
-
-
-
         plugin.getLogger().info(block.getState().getData().toString());
         String blockName;
         if (block.getType().toString().equalsIgnoreCase("LOG") || block.getType().toString().equalsIgnoreCase("LOG_2"))
@@ -194,12 +119,16 @@ public class MySqlCon implements Listener {
         }
         else
             blockName=block.getState().getData().toString();
+        updateDBOnQuest(player,"breakblock",blockName,1);
+    }
+    private void updateDBOnQuest(Player player, String questtype, String questtarget, int count)
+    {
         for (PlayerQuest pquest:playerQuests)
         {
-            if (pquest.uuid.equals(player.getUniqueId()) && pquest.questtype.equals("breakblock") && pquest.questtarget.equalsIgnoreCase(blockName) &&
-            !pquest.isCompleted)
+            if (pquest.uuid.equals(player.getUniqueId()) && pquest.questtype.equals(questtype) && pquest.questtarget.equalsIgnoreCase(questtarget) &&
+                    !pquest.isCompleted)
             {
-                pquest.collected++;
+                pquest.collected+=count;
                 if (pquest.collected >= pquest.tocollect)
                 {
                     pquest.isCompleted = true;
@@ -219,14 +148,10 @@ public class MySqlCon implements Listener {
                     {
                         e.printStackTrace();
                     }
-
-
                 }
-
             }
         }
     }
-
     private void giveQuests(UUID uuid, Player player) {
 
         try {
@@ -251,7 +176,6 @@ public class MySqlCon implements Listener {
 
 
     }
-
     private boolean playerExists(UUID uuid) {
 
         try {
@@ -271,7 +195,6 @@ public class MySqlCon implements Listener {
         plugin.getServer().broadcastMessage("Player not found");
         return false;
     }
-
     private void createPlayer(final UUID uuid, Player player) {
         try {
             PreparedStatement statement = plugin.getConnection().prepareStatement("SELECT * " +
@@ -292,7 +215,6 @@ public class MySqlCon implements Listener {
             e.printStackTrace();
         }
     }
-
     private void getDailyQuests(Player p) {
         ArrayList<Quest> questList = new ArrayList<>(3);
         ArrayList<String> goalArray = new ArrayList<>(4);
@@ -353,7 +275,6 @@ public class MySqlCon implements Listener {
 
             }
         }
-
         for (Quest q : questList) {
             try {
                 PreparedStatement statement = plugin.getConnection().prepareStatement("INSERT INTO " +
@@ -369,11 +290,7 @@ public class MySqlCon implements Listener {
                 e.printStackTrace();
             }
         }
-
-
-
     }
-
     public void checkQuestDb() {
         plugin.getLogger().info("Starting the quest checkup loop!");
         new BukkitRunnable() {
@@ -405,7 +322,6 @@ public class MySqlCon implements Listener {
     }
     public void pushPlayerQuests(Player p)
     {
-
     }
 }
 class Quest{
